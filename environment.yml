@@ -1,14 +1,16 @@
 name: meripseqpipe-1.0dev
 channels:
-  - r
-  - conda-forge
-  - bioconda
-  - anaconda
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/bioconda
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
   - defaults
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
+  
 dependencies:
   - openjdk=8.0.192
   - python=2.7.15
-  - picard=2.21.6
+  # - picard=2.21.6
   - fastqc=0.11.8
   - fastp=0.19.7
   - bedtools=2.27.1
@@ -45,3 +47,5 @@ dependencies:
   - r-rmarkdown=1.10
   - subread=2.0.0 
   - pandoc=2.7.3
+  - picard=2.26.10
+  # - umi_tools=1.1.2
