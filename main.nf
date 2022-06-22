@@ -944,33 +944,6 @@ process SortRename {
     }
 }
 
-process PicardDuplicate {
-    label 'Duplicate'
-    tag "$sample_name"
-    publishDir "${params.outdir}/alignment/samtoolsSort/", mode: 'link', overwrite: true
-
-    input:
-    set val(group), val(sample_id), file("*.bam"), file("*.bai") from sorted_bam
-
-    output:
-    file "*.bam" into bam_results
-
-    script:
-    prefix = "duplicate"
-    
-    """
-    
-    picard MarkDuplicates \\
-        I=$bam_file \\
-        O=${prefix}.bam \\
-        M=${prefix}.MarkDuplicates.metrics.txt
-
-    
-    """
-    
-}
-
-
 
 /*
  * STEP 3-2 - RSeQC analysis
