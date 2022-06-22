@@ -33,15 +33,11 @@ requirement:
 def helpMessage() {
     log.info"""
     Usage:
-
     The typical command for running the pipeline is as follows:
-
     nextflow run path/to/MeRIPseqPipe --designfile 'path/to/designfile.tsv' --comparefile 'path/to/compare.txt' -profile <docker/test/conda> -resume
     
     OR, 
-
     nextflow path/to/MeRIPseqPipe/main.nf -c path/to/MeRIPseqPipe/nextflow.config --designfile 'path/to/designfile/designfile.tsv' --comparefile 'path/to/comparefile/compare.txt' -profile <docker/test/conda> -resume
-
     Mandatory arguments:
       --designfile                  .tsv format(table splited by tabs): Sample_ID, input_R1, input_R2, ip_R1, ip_R2, Group_ID
       --comparefile                 .txt format: control_vs_treated;
@@ -52,14 +48,12 @@ def helpMessage() {
     References                      If not specified in the configuration file or you wish to overwrite any of the references.
       --fasta                       Path to Fasta reference
       --gtf                         Path to GTF reference
-
     Index:
       --rRNA_fasta                  Path to HISAT2 rRNA fasta reference
       --tophat2_index               Path to TopHat2 index, eg. 'path/to/Tophat2Index/*'
       --hisat2_index                Path to HISAT2 index, eg. 'path/to/HISAT2Index/*'
       --bwa_index                   Path to BWA index, eg. 'path/to/BWAIndex/*'
       --star_index                  Path to STAR index, eg. 'path/to/STARIndex/*'
-
     Main parameters of analysis mode:
       --stranded                    "yes" OR "no" OR "reverse"
       --mapq_cutoff                 [0-255] for filtering reads of different mapping quality
@@ -73,7 +67,6 @@ def helpMessage() {
       --peakCalling_mode            "group" OR "independence" for MATK and MeTPeak
       --peakMerged_mode             "rank" OR "macs2" OR "MATK" OR "metpeak" OR "mspc"
       --methylation_analysis_mode   "MATK" OR "QNB" OR "Wilcox-test" OR "edgeR" OR "DESeq2"
-
     Process skipping options:
       --skip_fastp                  Skip fastp
       --skip_fastqc                 Skip FastQC
@@ -101,7 +94,6 @@ def helpMessage() {
       --outdir                      The output directory where the results will be saved, defalut = $baseDir/results
       --help                        To show the help message
       -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
-
     """.stripIndent()
 }
 
@@ -315,7 +307,6 @@ println (LikeletUtils.print_yellow("Skip qc                        : ") + Likele
 // // Check the hostnames against configured profiles
 // checkHostname()
 /*
-
 ========================================================================================
                              check or build the index
 ========================================================================================
@@ -952,6 +943,33 @@ process SortRename {
         """
     }
 }
+
+process PicardDuplicate {
+    label 'Duplicate'
+    tag "$sample_name"
+    publishDir "${params.outdir}/alignment/samtoolsSort/", mode: 'link', overwrite: true
+
+    input:
+    set val(group), val(sample_id), file("*.bam"), file("*.bai") from sorted_bam
+
+    output:
+    file "*.bam" into bam_results
+
+    script:
+    prefix = "duplicate"
+    
+    """
+    
+    picard MarkDuplicates \\
+        I=$bam_file \\
+        O=${prefix}.bam \\
+        M=${prefix}.MarkDuplicates.metrics.txt
+
+    
+    """
+    
+}
+
 
 
 /*
@@ -1937,5 +1955,3 @@ def checkHostname(){
         }
     }
 }
-
-
