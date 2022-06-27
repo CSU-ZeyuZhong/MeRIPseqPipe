@@ -936,6 +936,9 @@ process SortRename {
     output = sample_name + ".bam"
     mapq_cutoff = (params.mapq_cutoff).toInteger() 
     prefix = "duplicate"
+
+
+    
     if (!params.skip_sort){
         """
         if [ "$mapq_cutoff" -gt "0" ]; then
@@ -954,11 +957,11 @@ process SortRename {
                 REMOVE_DUPLICATES=${!params.skip_picard_duplicate}
         elif [ "${params.duplicate_mode}" == "umitools" ]; then
             umi_tools \\
-                    dedup \\
+                dedup \\
                 -I ${output} \\
                 -S ${prefix}.${sample_name}.bam \\
                 --output-stats=deduplicated \\
-                ${params.single_end ? '' : ${params.umitools_paired_options}} \\
+                ${params.single_end ? '' : params.umitools_paired_options}
         else
             exit 255
         fi
