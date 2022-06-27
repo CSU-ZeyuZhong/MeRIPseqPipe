@@ -67,6 +67,8 @@ def helpMessage() {
       --peakCalling_mode            "group" OR "independence" for MATK and MeTPeak
       --peakMerged_mode             "rank" OR "macs2" OR "MATK" OR "metpeak" OR "mspc"
       --methylation_analysis_mode   "MATK" OR "QNB" OR "Wilcox-test" OR "edgeR" OR "DESeq2"
+      --duplicate_mode              "picard" OR "umitools"
+
     Process skipping options:
       --skip_fastp                  Skip fastp
       --skip_fastqc                 Skip FastQC
@@ -89,6 +91,8 @@ def helpMessage() {
       --skip_motif                  Skip the process of motif searching
       --skip_m6Aprediction          Skip the process of m6A site prediction
       --skip_createbedgraph         Skip the process of making bedgraph format files and creatIGVjs
+      --skip_duplicate              Skip the process of removing reads' duplicates
+      
     
     Other options:
       --outdir                      The output directory where the results will be saved, defalut = $baseDir/results
@@ -110,6 +114,7 @@ ch_output_docs = file("$baseDir/docs/output.md", checkIfExists: true)
 /*
  * SET UP CONFIGURATION VARIABLES
  */
+
 
 // Configurable variables
 params.name = false
@@ -302,6 +307,13 @@ println (LikeletUtils.print_yellow("Skip peakCalling               : ") + Likele
 println (LikeletUtils.print_yellow("Skip diffpeakCalling           : ") + LikeletUtils.print_green(params.skip_diffpeakCalling))
 println (LikeletUtils.print_yellow("Skip annotation                : ") + LikeletUtils.print_green(params.skip_annotation))
 println (LikeletUtils.print_yellow("Skip qc                        : ") + LikeletUtils.print_green(params.skip_qc))
+
+println LikeletUtils.print_yellow("======================================My selected==============================")
+println (LikeletUtils.print_yellow("zzy information                : ") + LikeletUtils.print_green(params.zzy))
+println (LikeletUtils.print_yellow("Skip duplicate                 : ") + LikeletUtils.print_green(params.skip_picard_duplicate))
+println (LikeletUtils.print_yellow("duplicate_mode                 : ") + LikeletUtils.print_green(params.duplicate_mode))
+
+
 
 // log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
 // // Check the hostnames against configured profiles
@@ -923,6 +935,7 @@ process SortRename {
     sample_name = sample_id + (input ? ".input_" : ".ip_") + group
     output = sample_name + ".bam"
     mapq_cutoff = (params.mapq_cutoff).toInteger() 
+    prefix = "duplicate"
     if (!params.skip_sort){
         """
         if [ "$mapq_cutoff" -gt "0" ]; then
@@ -931,7 +944,33 @@ process SortRename {
             samtools sort -@ ${task.cpus} -O BAM -o $output $bam_file
         fi
         samtools index -@ ${task.cpus} $output
+
+        if [ "${params.duplicate_mode}" == "picard" ]; then
+            picard MarkDuplicates \\
+                    -Xmx200g \\
+                I=${output} \\
+                O=${prefix}.${sample_name}.bam \\
+                M=${prefix}.${sample_name}.MarkDuplicates.metrics.txt \\
+                REMOVE_DUPLICATES=${!params.skip_picard_duplicate}
+        elif [ "${params.duplicate_mode}" == "umitools" ]; then
+            umi_tools \\
+                    dedup \\
+                -I ${output} \\
+                -S ${prefix}.${sample_name}.bam \\
+                --output-stats=deduplicated \\
+                ${params.single_end ? '' : ${params.umitools_paired_options}} \\
+        else
+            exit 255
+        fi
+
+        mv ${prefix}.${sample_name}.bam ${output}
+
+        samtools sort -@ ${task.cpus} -O BAM -o sorted.${sample_name}.bam ${output}
+        mv sorted.${sample_name}.bam ${output}
+        samtools index -@ ${task.cpus} $output
+
         """
+        
     } else {
         """
         if [ "$mapq_cutoff" -gt "0" ]; then
@@ -943,6 +982,40 @@ process SortRename {
         """
     }
 }
+
+// process PicardDuplicate {
+//     label 'duplicate'
+//     tag "$sample_name"
+//     publishDir "${params.outdir}/alignment/samtoolsSort/", mode: 'link', overwrite: true
+
+//     input:
+//     set val(group), val(sample_id), val(input), file(sorted_file), file(sorted_bai_file) from sorted_bam
+
+//     output:
+//     set val(group), val(sample_id), val(input),file("*.bam"), file("*.bai") into duplicate_sorted_bam
+//     file "*.{bam,bai}" into rseqc_bam, bedgraph_bam, feacount_bam, cuffbam, peakquan_bam, diffpeak_bam, sng_bam
+//     file "*.bam" into bam_results
+
+//     script:
+//     prefix = "duplicate"
+//     sample_name = sample_id + (input ? ".input_" : ".ip_") + group
+    
+//     """
+    
+//     picard MarkDuplicates \\
+//         -Xmx200g \\
+//         I=${sorted_file} \\
+//         O=${sample_name}.${prefix}.bam \\
+//         M=${sample_name}.${prefix}.MarkDuplicates.metrics.txt \\
+//         REMOVE_DUPLICATES=${!params.skip_duplicate}
+
+//     samtools sort -@ ${task.cpus} -O BAM -o ${sample_name}.${prefix}.sorted.bam ${sample_name}.${prefix}.bam
+//     mv ${sample_name}.${prefix}.sorted.bam ${sample_name}.${prefix}.bam
+//     samtools index -@ ${task.cpus} ${sample_name}.${prefix}.bam
+    
+//     """
+    
+// }
 
 
 /*
